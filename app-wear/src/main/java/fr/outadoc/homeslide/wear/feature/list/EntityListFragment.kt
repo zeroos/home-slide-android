@@ -16,7 +16,12 @@
 
 package fr.outadoc.homeslide.wear.feature.list
 
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -55,6 +60,17 @@ class EntityListFragment : Fragment() {
     private val tileAdapter = EntityTileAdapter { entity -> onEntityClick(entity) }
 
     private lateinit var additionalTiles: List<Tile<Entity>>
+
+    private lateinit var connectivityManager : ConnectivityManager
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            if (connectivityManager.bindProcessToNetwork(network)) {
+                KLog.d { "Successfully connected to wifi" }
+            } else {
+                KLog.e { "Did not manage to connect to wifi" }
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -170,6 +186,29 @@ class EntityListFragment : Fragment() {
             }
             else -> vm.onEntityClick(entity)
         }
+    }
+    private fun requestWifi() {
+        val request: NetworkRequest = NetworkRequest.Builder().run {
+            addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            build()
+        }
+        connectivityManager.requestNetwork(request, networkCallback)
+    }
+
+    private fun releaseWifiRequest() {
+        connectivityManager.bindProcessToNetwork(null)
+        connectivityManager.unregisterNetworkCallback(networkCallback)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        releaseWifiRequest()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        connectivityManager = context?.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        requestWifi()
     }
 
     override fun onResume() {
