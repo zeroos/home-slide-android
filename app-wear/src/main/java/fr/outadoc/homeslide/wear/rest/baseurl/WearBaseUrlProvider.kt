@@ -40,12 +40,15 @@ class WearBaseUrlProvider(
 
     private val localBaseUri: HttpUrl?
         get() {
+            KLog.d { "Binding to Wi-Fi network" }
             connectivityManager.bindProcessToNetwork(currentWifiNetwork)
+            requestWifi()
             return config.localInstanceBaseUrl.toUrlOrNull()
         }
 
     private val remoteBaseUri: HttpUrl?
         get() {
+            KLog.d { "Unbinding from Wi-Fi network" }
             connectivityManager.bindProcessToNetwork(null)
             return config.remoteInstanceBaseUrl.toUrlOrNull()
         }
@@ -57,25 +60,31 @@ class WearBaseUrlProvider(
             preferLocalBaseUrl = value != null
         }
 
-    init {
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            KLog.d { "Connected to Wi-Fi" }
+            currentWifiNetwork = network
+        }
+
+        override fun onLost(network: Network) {
+            KLog.d { "Disconnected from Wi-Fi, preferring remote base URL" }
+            currentWifiNetwork = null
+        }
+    }
+
+    private fun requestWifi() {
         val wifiRequest = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
             .build()
 
-        connectivityManager.registerNetworkCallback(
-            wifiRequest,
-            object : ConnectivityManager.NetworkCallback() {
+        connectivityManager.requestNetwork(
+            wifiRequest, networkCallback
+        )
 
-                override fun onAvailable(network: Network) {
-                    KLog.d { "Connected to Wi-Fi" }
-                    currentWifiNetwork = network
-                }
+    }
 
-                override fun onLost(network: Network) {
-                    KLog.d { "Disconnected from Wi-Fi, preferring remote base URL" }
-                    currentWifiNetwork = null
-                }
-            })
+    init {
+        requestWifi()
     }
 
     override fun getBaseUrl(rank: BaseUrlRank) =
@@ -94,6 +103,8 @@ class WearBaseUrlProvider(
     }
 
     override fun releaseNetwork() {
+        KLog.d { "Releasing Wi-Fi network" }
         connectivityManager.bindProcessToNetwork(null)
+        connectivityManager.unregisterNetworkCallback(networkCallback)
     }
 }
