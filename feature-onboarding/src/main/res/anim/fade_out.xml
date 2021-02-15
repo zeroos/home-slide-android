@@ -15,9 +15,10 @@
   ~    limitations under the License.
   -->
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="fr.outadoc.homeslide.rest">
-
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-</manifest>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:anim/linear_interpolator">
+    <alpha
+        android:duration="@android:integer/config_shortAnimTime"
+        android:fromAlpha="1.0"
+        android:toAlpha="0.1" />
+</set>
